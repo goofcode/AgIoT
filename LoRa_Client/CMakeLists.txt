@@ -16,7 +16,8 @@ generate_arduino_library(RadioHead SRCS ${RH_SRCS} HDRS ${RH_HDRS})
 #  generate arduino firmware                #
 #===========================================#
 set(${CMAKE_PROJECT_NAME}_BOARD uno)
-set(${CMAKE_PROJECT_NAME}_PORT /dev/cu.wchusbserial1420)
+file(GLOB ARD_PORT /dev/cu.wchusbserial*)
+set(${CMAKE_PROJECT_NAME}_PORT ${ARD_PORT})
 set(${CMAKE_PROJECT_NAME}_SKETCH LoRa_Client.ino)
 # set(mega.build.mcu atmega2560)
 # set(mega.upload.protocol wiring)
