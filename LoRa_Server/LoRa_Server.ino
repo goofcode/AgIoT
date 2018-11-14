@@ -1,37 +1,20 @@
 #include <Console.h>
+#include <Process.h>
 #include <SPI.h>
 #include <RH_RF95.h>
 
-#define BAUDRATE            115200
+#define   BAUDRATE      115200
+#define   FREQUENCY     868.0
+
 
 RH_RF95     rf95;
-float       frequency = 868.0;
-int         led = A2;
-
-void hexPrint(uint8_t *p, uint8_t len){
-
-  char hexMap[] = {
-    '0','1','2','3','4','5','6','7',
-    '8','9','A','B','C','D','E','F'
-    };
-  
-  Console.print(len);
-  Console.print("B: ");
-  for(int i=0; i < len; i++){
-    Console.print("0x");
-    Console.print(hexMap[p[i] >> 4]);
-    Console.print(hexMap[p[i] & 0x0F]);
-    Console.print(" ");
-  }
-  Console.println();
-}
+String      rest_url = "http://52.78.16.193:8080/api/image"
 
 void setup() 
 {
-  pinMode(led, OUTPUT);     
   Bridge.begin(BAUDRATE);
   Console.begin();
-  while (!Console) ; // Wait for serial port to be available
+  while (!Console) ;                // Wait for serial port to be available
   
   if (!rf95.init()){
     Console.println("init failed");
@@ -54,26 +37,31 @@ void loop()
 {
   if (rf95.available())
   {
-    // Should be a message for us now   
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-    uint8_t i, len = RH_RF95_MAX_MESSAGE_LEN;
+    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN+1];
+    uint8_t len = RH_RF95_MAX_MESSAGE_LEN;
     
     if (rf95.recv(buf, &len))
-    {
-      hexPrint(buf, len);
+    {      
+      buf[len] = '\0';
       
-      Console.print("RSSI: ");
+      Console.print("packet received (rssi: ");
       Console.println(rf95.lastRssi(), DEC);
+      Console.print(")");
       
-      // Send a reply
+      // Send a ACK
       rf95.send("ACK", sizeof("ACK"));
       rf95.waitPacketSent();
-      Console.println("Sent a reply");
-      digitalWrite(led, LOW);
-    }
-    else
-    {
-      Console.println("recv failed");
+
+      // rest call
+      Process p;    
+      p.begin("curl");
+      p.addParameter("-k");
+      p.addParameter(upload_url);
+      p.addParameter("-d");
+      p.addParameter(buf);
+      p.run();
+
+      Console.println();
     }
   }
 }
