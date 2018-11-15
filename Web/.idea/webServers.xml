@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="4868674d-4bf9-4213-9f64-88029a76616e" name="aws" url="http://52.78.16.193:8080/">
+        <fileTransfer host="52.78.16.193" port="22" privateKey="$USER_HOME$/.ssh/awsKeyPair.pem" rootFolder="/home/goofcode" accessType="SFTP" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
