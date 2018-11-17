@@ -3,16 +3,42 @@
 <head>
     <title> AgIoT </title>
     <link rel='stylesheet' href='/stylesheets/style.css'/>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 </head>
 <body>
 <table>
     <% for(var i = 0; i < num_row; i++) { %>
     <tr>
         <% for (var j = 0; j < num_col; j++) { %>
-            <td></td>
-        <%}%>
+        <% var number = i * num_col + j; %>
+
+        <td id="cell-<%= number %>"
+        <% if (imageCells[number]) { %>
+            style="background-image: url(<%= imageCells[number] %>)">
+        <% } %>
+        </td>
+
+        <% } %>
     </tr>
-    <% }%>
+    <% } %>
 </table>
+
+<script>
+    setInterval(function () {
+        $.get("/api/updatedCells", function (data) {
+            if (data.length === 0) {
+                return;
+            }
+
+            $("#cell-" + data[0].number).css("background-image",
+                `url("${data[0].image}")`)
+
+            $.post("/api/updatedCells/pop", function (data) {
+                console.log(data);
+            });
+        });
+    }, 100)
+</script>
 </body>
 </html>
