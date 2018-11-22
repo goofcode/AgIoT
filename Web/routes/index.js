@@ -1,24 +1,44 @@
 const express = require('express');
 const cache = require('memory-cache');
 
+const PNGlib = require('node-pnglib');
+
 const router = express.Router();
 
 const n = 10;
 
-const parseCellNumber = (data) => {
-    // TODO: properly parse cell number from packet
-    return data[0];
-};
+const imageSize = 160;
+
+const cellSize = imageSize / n;
+
+// TODO: get metadata for cells
 
 const parseImage = (data) => {
     // TODO: properly parse image data
-    return data.slice(1);
+    const buffer = new ArrayBuffer(cellSize * cellSize);
+
+    const bytes = new Uint8Array(buffer);
+
+    for (let i = 0; i < cellSize * cellSize; i++) {
+        bytes[i] = data.charCodeAt(i);
+    }
+
+    let png = new PNGlib(cellSize, cellSize, cellSize * cellSize);
+    for (let i = 0; i < cellSize; i++) {
+        for (let j = 0; j < cellSize; j++) {
+            const g = bytes[i * cellSize + j];
+
+            png.setPixel(i, j, [g, g, g]);
+        }
+    }
+
+    return "data:image/png;base64," + png.getBase64();
 };
 
 const getImageCell = (data) => {
     return {
-        number: parseCellNumber(data),
-        image: parseImage(data)
+        number: data['number'],
+        image: parseImage(data['cell'])
     }
 };
 
@@ -84,7 +104,7 @@ router.post('/api/updatedCells/pop', function (req, res) {
 });
 
 router.post('/api/image', async function (req, res) {
-    let changedCell = await getImageCell(req.body['cell']);
+    let changedCell = await getImageCell(req.body);
 
     await updateCell(res, changedCell);
 

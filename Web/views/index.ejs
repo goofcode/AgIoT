@@ -7,22 +7,27 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 </head>
 <body>
-<table>
-    <% for(var i = 0; i < num_row; i++) { %>
-    <tr>
-        <% for (var j = 0; j < num_col; j++) { %>
-        <% var number = i * num_col + j; %>
+<header>
+    <h1> <img src="/images/atoi_logo.png"> </h1>
+</header>
+<div>
+    <table align="center">
+        <% for(var i = 0; i < num_row; i++) { %>
+        <tr>
+            <% for (var j = 0; j < num_col; j++) { %>
+            <% var number = i * num_col + j; %>
 
-        <td id="cell-<%= number %>"
-        <% if (imageCells[number]) { %>
-            style="background-image: url(<%= imageCells[number] %>)">
-        <% } %>
-        </td>
+            <td id="cell-<%= number %>"
+                    <% if (imageCells[number]) { %>
+                style="background-image: url(<%= imageCells[number] %>)">
+                <% } %>
+            </td>
 
+            <% } %>
+        </tr>
         <% } %>
-    </tr>
-    <% } %>
-</table>
+    </table>
+</div>
 
 <script>
     setInterval(function () {
