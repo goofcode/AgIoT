@@ -8,7 +8,22 @@
 
 
 RH_RF95     rf95;
-String      rest_url = "http://52.78.16.193:8080/api/image"
+String      rest_url = "http://52.78.16.193:8080/api/image";
+
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN+1];
+uint8_t len = RH_RF95_MAX_MESSAGE_LEN;
+
+void api_send_cell(int number, uint8_t* cell)
+{
+  Process p;    
+  p.begin("curl");
+  p.addParameter("-X Post");
+  p.addParameter("-H content-type: multipart/form-data");
+  p.addParameter("-k " + upload_url);
+  p.addParameter("-F number="  );
+  p.addParameter(buf);
+  p.run();
+}
 
 void setup() 
 {
@@ -36,10 +51,7 @@ void setup()
 void loop()
 {
   if (rf95.available())
-  {
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN+1];
-    uint8_t len = RH_RF95_MAX_MESSAGE_LEN;
-    
+  {    
     if (rf95.recv(buf, &len))
     {      
       buf[len] = '\0';
@@ -53,14 +65,8 @@ void loop()
       rf95.waitPacketSent();
 
       // rest call
-      Process p;    
-      p.begin("curl");
-      p.addParameter("-k");
-      p.addParameter(upload_url);
-      p.addParameter("-d");
-      p.addParameter(buf);
-      p.run();
-
+//      api_send_cell(buf);
+       
       Console.println();
     }
   }
