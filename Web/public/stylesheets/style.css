@@ -8,7 +8,9 @@ a {
 }
 
 table {
+  font-size: 0;
   border-spacing: 0;
+  table-layout: fixed;
 }
 
 td {

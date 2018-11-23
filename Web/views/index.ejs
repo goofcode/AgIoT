@@ -8,7 +8,7 @@
 </head>
 <body>
 <header>
-    <h1> <img src="/images/atoi_logo.png"> </h1>
+    <h1><img src="/images/atoi_logo.png"></h1>
 </header>
 <div>
     <table align="center">
@@ -17,10 +17,8 @@
             <% for (var j = 0; j < num_col; j++) { %>
             <% var number = i * num_col + j; %>
 
-            <td id="cell-<%= number %>"
-                    <% if (imageCells[number]) { %>
-                style="background-image: url(<%= imageCells[number] %>)">
-                <% } %>
+            <td>
+                <canvas id="cell-<%= number %>" width="16px" height="16px"></canvas>
             </td>
 
             <% } %>
@@ -30,14 +28,46 @@
 </div>
 
 <script>
+    const n = <%= num_row %>;
+
+    const imageSize = 160;
+
+    const cellSize = imageSize / n;
+
+    function drawCell(data, number) {
+        const buffer = new ArrayBuffer(cellSize * cellSize);
+
+        const bytes = new Uint8Array(buffer);
+
+        for (let i = 0; i < cellSize * cellSize; i++) {
+            bytes[i] = parseInt(data.substring(2*i, 2*i + 2), 16);
+        }
+
+        const c = document.getElementById("cell-" + number);
+        const ctx = c.getContext("2d");
+
+        for (let i = 0; i < cellSize; i++) {
+            for (let j = 0; j < cellSize; j++) {
+                const g = bytes[i * cellSize + j]
+
+                console.log(g)
+
+                ctx.fillStyle = "rgba(" + g + "," + g + "," + g + ", 1)";
+                ctx.fillRect(i, j, 1, 1);
+            }
+        }
+    }
+
     setInterval(function () {
         $.get("/api/updatedCells", function (data) {
             if (data.length === 0) {
                 return;
             }
 
-            $("#cell-" + data[0].number).css("background-image",
-                `url("${data[0].image}")`)
+            // $("#cell-" + data[0].number).css("background-image",
+            //     `url("${data[0].image}")`)
+
+            drawCell(data[0].image, data[0].number)
 
             $.post("/api/updatedCells/pop", function (data) {
                 console.log(data);
