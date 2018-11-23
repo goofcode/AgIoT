@@ -8,7 +8,7 @@ const upload  = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-const n = 10;
+const n = 16;
 
 const imageSize = 160;
 
@@ -20,18 +20,10 @@ const cellSize = imageSize / n;
 
 const parseImage = (data) => {
     // TODO: properly parse image data
-    const buffer = new ArrayBuffer(cellSize * cellSize);
-
-    const bytes = new Uint8Array(buffer);
-
-    for (let i = 0; i < cellSize * cellSize; i++) {
-        bytes[i] = data.charCodeAt(i);
-    }
-
     let png = new PNGlib(cellSize, cellSize, cellSize * cellSize);
     for (let i = 0; i < cellSize; i++) {
         for (let j = 0; j < cellSize; j++) {
-            const g = bytes[i * cellSize + j];
+            const g = data[i * cellSize + j];
 
             png.setPixel(i, j, [g, g, g]);
         }
@@ -43,7 +35,7 @@ const parseImage = (data) => {
 const getImageCell = (data) => {
     return {
         number: data['number'],
-        image: data['image']
+        image: parseImage(data['image'])
     }
 };
 
@@ -111,10 +103,11 @@ router.post('/api/updatedCells/pop', function (req, res) {
 router.post('/api/image', upload.single('cell'), async function (req, res) {
     let changedCell = await getImageCell({
         number: req.body['number'],
-        image: req.file.buffer.toString('hex')
+        image: req.file.buffer
     });
 
-    console.log(req.body)
+    console.log(req.body);
+    console.log(req.file);
 
     await updateCell(res, changedCell);
 
