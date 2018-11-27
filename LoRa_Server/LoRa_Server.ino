@@ -33,14 +33,6 @@ void api_send_cell(int number, uint8_t* cell)
   p.addParameter("-d");
   p.addParameter(data);
   p.run();
-  
-  // A process output can be read with the stream methods
-  while (p.available() > 0) {
-    char c = p.read();
-    Console.print(c);
-  } 
-  // Ensure the last bit of data is sent.
-  Console.flush();
 }
 
 void setup() 
