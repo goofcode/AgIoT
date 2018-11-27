@@ -3,9 +3,6 @@ const cache = require('memory-cache');
 
 const PNGlib = require('node-pnglib');
 
-const multer  = require('multer');
-const upload  = multer({ storage: multer.memoryStorage() });
-
 const router = express.Router();
 
 const n = 16;
@@ -18,12 +15,31 @@ const cellSize = imageSize / n;
 
 // TODO: initialize all cells
 
+const parseHexString = (str) => {
+    let result = [];
+
+    for (let i = 0; i < 100; i++) {
+        result.push(0)
+    }
+
+    let i = 0;
+    while (str.length >= 2) {
+        result[i] = parseInt(str.substring(0, 2), 16);
+
+        str = str.substring(2, str.length);
+        i++;
+    }
+
+    return result;
+};
+
 const parseImage = (data) => {
-    // TODO: properly parse image data
+    const bytes = parseHexString(data);
+
     let png = new PNGlib(cellSize, cellSize, cellSize * cellSize);
     for (let i = 0; i < cellSize; i++) {
         for (let j = 0; j < cellSize; j++) {
-            const g = data[i * cellSize + j];
+            const g = bytes[i * cellSize + j];
 
             png.setPixel(i, j, [g, g, g]);
         }
@@ -100,23 +116,23 @@ router.post('/api/updatedCells/pop', function (req, res) {
     res.send(cache.get('updateQueue'));
 });
 
-router.post('/api/image', upload.single('cell'), async function (req, res) {
+router.get('/api/image', function (req, res) {
+    res.send("GET api image");
+});
+
+router.post('/api/image', async function (req, res) {
+    console.log(req.body);
+    console.log(req.body['number']);
+    console.log(req.body['cell']);
+
     let changedCell = await getImageCell({
         number: req.body['number'],
-        image: req.file.buffer
+        image: req.body['cell']
     });
-
-    console.log(req.body);
-    console.log(req.file);
 
     await updateCell(res, changedCell);
 
-    res.send({
-        changedCellNumber: changedCell.number,
-        imageData: changedCell.image,
-        cells: cache.get('cells'),
-        updateQueue: cache.get('updateQueue')
-    });
+    res.send("updated cell " + changedCell.number);
 });
 
 
