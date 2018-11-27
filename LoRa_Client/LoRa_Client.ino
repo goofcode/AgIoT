@@ -10,6 +10,27 @@
 RH_RF95 rf95;
 uint8_t buf[MAX_FRAME_SIZE];
 
+bool send_with_ack(uint8_t *buf, uint8_t len) {
+
+  int idx = buf[0];
+
+  for(int i=0; i<MAX_RETRANSMISSION; i++){
+    
+    rf95.send(buf, len);
+    rf95.waitPacketSent();
+  
+    if (rf95.waitAvailableTimeout(ACK_WAIT_TIME))
+    {
+      // Should be a reply message for us now
+      if (rf95.recv(buf, &len))
+        if (buf[0] == idx && strncmp(&buf[1], "ACK", 3) == 0)
+          return true;
+    }
+  }
+
+  return false;
+}
+
 bool send_without_ack(uint8_t *buf, uint8_t len) {
 
   rf95.send(buf, len);
@@ -51,6 +72,8 @@ void loop() {
   }
   
   // send out packet through lora
-  send_without_ack(buf, len);  
-  Serial.println(int(len));  
+  if(send_with_ack(buf, len)) 
+    Serial.println(int(len));
+  else
+    Serial.println(0);
 }
