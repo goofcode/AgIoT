@@ -8,7 +8,7 @@
 </head>
 <body>
 <header>
-    <h1> <img src="/images/atoi_logo.png"> </h1>
+    <h1><img src="/images/atoi_logo.png"></h1>
 </header>
 <div>
     <table align="center">
@@ -36,14 +36,18 @@
                 return;
             }
 
-            $("#cell-" + data[0].number).css("background-image",
+            const $cell = $("#cell-" + data[0].number);
+
+            console.log(data[0].number);
+
+            $cell.css("background-image",
                 `url("${data[0].image}")`)
 
-            $.post("/api/updatedCells/pop", function (data) {
+            $.post("/api/updateCells/pop/" + data[0].number, function (data) {
                 console.log(data);
             });
         });
-    }, 100)
+    }, 60)
 </script>
 </body>
 </html>

@@ -41,7 +41,7 @@ const parseImage = (data) => {
         for (let j = 0; j < cellSize; j++) {
             const g = bytes[i * cellSize + j];
 
-            png.setPixel(i, j, [g, g, g]);
+            png.setPixel(j, i, [g, g, g]);
         }
     }
 
@@ -55,9 +55,8 @@ const getImageCell = (data) => {
     }
 };
 
-const updateCell = (res, changedCell) => {
+const updateCell = async (res, changedCell, sessionStore) => {
     let cells = cache.get('cells');
-    let updateQueue = cache.get('updateQueue');
 
     if (!cells) {
         cells = [];
@@ -67,73 +66,82 @@ const updateCell = (res, changedCell) => {
 
     cache.put('cells', cells);
 
-    if (!updateQueue) {
-        updateQueue = [];
-    }
+    await sessionStore.all(function (err, sessions) {
+        for (let key of Object.keys(sessions)) {
+            if (!sessions[key].updateQueue) {
+                sessions[key].updateQueue = [];
 
-    updateQueue.push(changedCell);
+            }
+            sessions[key].updateQueue.push(changedCell);
 
-    cache.put('updateQueue', updateQueue);
+            sessionStore.set(key, sessions[key], function (err) {
+                if (err) {
+                    throw err;
+                }
+            });
+        }
+    });
 };
 
-router.get('/', function (req, res) {
-    const cells = cache.get('cells');
 
-    // Draw initial image with whole cells saved in server
-    res.render('index', {
-        imageCells: cells ? cells : [],
-        num_row: n,
-        num_col: n
-    });
-});
+module.exports = (sessionStore) => {
+    router.get('/', function (req, res) {
+        const cells = cache.get('cells');
 
-router.get('/api/cells', function (req, res) {
-    const cells = cache.get('cells');
-
-    if (!cells) {
-        res.send([]);
-    } else {
-        res.send(cells);
-    }
-});
-
-router.get('/api/updatedCells', function (req, res) {
-    const updateQueue = cache.get('updateQueue');
-
-    if (!updateQueue) {
-        res.send([]);
-    } else {
-        res.send(updateQueue);
-    }
-});
-
-router.post('/api/updatedCells/pop', function (req, res) {
-    const updateQueue = cache.get('updateQueue');
-
-    updateQueue.shift();
-    cache.put('updateQueue', updateQueue);
-
-    res.send(cache.get('updateQueue'));
-});
-
-router.get('/api/image', function (req, res) {
-    res.send("GET api image");
-});
-
-router.post('/api/image', async function (req, res) {
-    console.log(req.body);
-    console.log(req.body['number']);
-    console.log(req.body['cell']);
-
-    let changedCell = await getImageCell({
-        number: req.body['number'],
-        image: req.body['cell']
+        res.render('index', {
+            imageCells: cells ? cells : [],
+            num_row: n,
+            num_col: n
+        });
     });
 
-    await updateCell(res, changedCell);
+    router.get('/api/cells', function (req, res) {
+        const cells = cache.get('cells');
 
-    res.send("updated cell " + changedCell.number);
-});
+        if (!cells) {
+            res.send([]);
+        } else {
+            res.send(cells);
+        }
+    });
 
+    router.get('/api/updatedCells', function (req, res) {
+        res.send(req.session['updateQueue'] ? req.session['updateQueue'] : [])
+    });
 
-module.exports = router;
+    router.post('/api/updatedCells/pop', function (req, res) {
+        req.session['updateQueue'].shift();
+
+        res.send(req.session['updateQueue']);
+    });
+
+    router.post('/api/updateCells/pop/:number', function (req, res) {
+        const number = req.params.number;
+
+        const index = req.session['updateQueue'].findIndex(function (item) {
+            return item.number === number;
+        });
+
+        if (index === -1) {
+            res.send(req.session['updateQueue']);
+            return;
+        }
+
+        req.session['updateQueue'].splice(index, 1);
+
+        res.send(req.session['updateQueue']);
+    });
+
+    router.post('/api/image', async function (req, res) {
+        let changedCell = await getImageCell({
+            number: req.body['number'],
+            image: req.body['cell']
+        });
+
+        await updateCell(res, changedCell, sessionStore);
+
+        res.send("updated cell " + changedCell.number);
+    });
+
+    return router;
+};
