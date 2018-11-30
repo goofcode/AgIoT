@@ -29,25 +29,17 @@
     </table>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-    setInterval(function () {
-        $.get("/api/updatedCells", function (data) {
-            if (data.length === 0) {
-                return;
-            }
+    const socket = io();
 
-            const $cell = $("#cell-" + data[0].number);
+    socket.on('updateCell', function(cell) {
+        const $cell = $("#cell-" + cell.number);
 
-            console.log(data[0].number);
-
-            $cell.css("background-image",
-                `url("${data[0].image}")`)
-
-            $.post("/api/updateCells/pop/" + data[0].number, function (data) {
-                console.log(data);
-            });
-        });
-    }, 60)
+        $cell.css("background-image",
+                    `url("${cell.image}")`)
+    })
 </script>
+
 </body>
 </html>

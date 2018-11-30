@@ -55,7 +55,7 @@ const getImageCell = (data) => {
     }
 };
 
-const updateCell = async (res, changedCell, sessionStore) => {
+const updateCell = async (changedCell) => {
     let cells = cache.get('cells');
 
     if (!cells) {
@@ -65,28 +65,18 @@ const updateCell = async (res, changedCell, sessionStore) => {
     cells[changedCell.number] = changedCell.image;
 
     cache.put('cells', cells);
-
-    await sessionStore.all(function (err, sessions) {
-        for (let key of Object.keys(sessions)) {
-            if (!sessions[key].updateQueue) {
-                sessions[key].updateQueue = [];
-
-            }
-            sessions[key].updateQueue.push(changedCell);
-
-            sessionStore.set(key, sessions[key], function (err) {
-                if (err) {
-                    throw err;
-                }
-            });
-        }
-    });
 };
 
 
-module.exports = (sessionStore) => {
+module.exports = (sessionStore, io) => {
+    io.on('connection', function (socket) {
+        console.log('new client connected');
+    });
+
     router.get('/', function (req, res) {
         const cells = cache.get('cells');
+
+        io.emit('broadcast', { for: 'everyone' });
 
         res.render('index', {
             imageCells: cells ? cells : [],
@@ -105,40 +95,15 @@ module.exports = (sessionStore) => {
         }
     });
 
-    router.get('/api/updatedCells', function (req, res) {
-        res.send(req.session['updateQueue'] ? req.session['updateQueue'] : [])
-    });
-
-    router.post('/api/updatedCells/pop', function (req, res) {
-        req.session['updateQueue'].shift();
-
-        res.send(req.session['updateQueue']);
-    });
-
-    router.post('/api/updateCells/pop/:number', function (req, res) {
-        const number = req.params.number;
-
-        const index = req.session['updateQueue'].findIndex(function (item) {
-            return item.number === number;
-        });
-
-        if (index === -1) {
-            res.send(req.session['updateQueue']);
-            return;
-        }
-
-        req.session['updateQueue'].splice(index, 1);
-
-        res.send(req.session['updateQueue']);
-    });
-
     router.post('/api/image', async function (req, res) {
         let changedCell = await getImageCell({
             number: req.body['number'],
             image: req.body['cell']
         });
 
-        await updateCell(res, changedCell, sessionStore);
+        await updateCell(changedCell);
+
+        io.emit('updateCell', changedCell);
 
         res.send("updated cell " + changedCell.number);
     });
