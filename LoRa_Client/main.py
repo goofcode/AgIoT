@@ -29,12 +29,31 @@ class AtoI:
         self.now = None
         self.prev = None
 
+        self.re_tx = 2
+        self.ack_wait = 30
+
     def capture_gray_2d(self):
         self._camera.capture(self._capture, 'rgb')
         self.now = np.dot(np.reshape(self._capture, (self.height, self.width, 3)), [0.299, 0.587, 0.114]).astype(np.uint8)
 
         if self.prev is None:
             self.prev = np.copy(self.now)
+
+        self._save()
+
+    def _send(self, payload, ack=True):
+        # type: (bytearray, bool) -> int
+        self._lora_serial.write(chr(len(payload)))
+        self._lora_serial.write(payload)
+
+        if not ack:
+            self._lora_serial.write('s')
+        else:
+            self._lora_serial.write('a')
+            self._lora_serial.write(chr(self.re_tx))
+            self._lora_serial.write(chr(self.ack_wait))
+
+        return int(self._lora_serial.readline())
 
     def _get_pos(self, idx):
         r_start = int(idx % self.n) * self.cell_height

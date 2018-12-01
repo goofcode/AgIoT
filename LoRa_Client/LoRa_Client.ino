@@ -4,31 +4,30 @@
 #define LORA_FREQ                               868.0
 
 #define MAX_FRAME_SIZE        RH_RF95_MAX_MESSAGE_LEN
-#define MAX_RETRANSMISSION                          7
-#define ACK_WAIT_TIME                            3000
 
 RH_RF95 rf95;
 uint8_t buf[MAX_FRAME_SIZE];
 
-bool send_with_ack(uint8_t *buf, uint8_t len) {
+int send_with_ack(uint8_t *buf, uint8_t len, int re_tx, int wait) {
 
   int idx = buf[0];
+  uint8_t recv_len;
 
-  for(int i=0; i<MAX_RETRANSMISSION; i++){
+  for(int i=0; i<re_tx+1; i++){
     
     rf95.send(buf, len);
     rf95.waitPacketSent();
   
-    if (rf95.waitAvailableTimeout(ACK_WAIT_TIME))
+    if (rf95.waitAvailableTimeout(wait))
     {
       // Should be a reply message for us now
-      if (rf95.recv(buf, &len))
+      if (rf95.recv(buf, &recv_len))
         if (buf[0] == idx && strncmp(&buf[1], "ACK", 3) == 0)
-          return true;
+          return len;
     }
   }
 
-  return false;
+  return 0;
 }
 
 bool send_without_ack(uint8_t *buf, uint8_t len) {
@@ -36,7 +35,7 @@ bool send_without_ack(uint8_t *buf, uint8_t len) {
   rf95.send(buf, len);
   rf95.waitPacketSent();
 
-  return true;
+  return len;
 }
 
 void setup() {
@@ -59,6 +58,8 @@ void setup() {
 
 void loop() {
 
+  uint8_t result;
+
   // read length
   while(Serial.available() <= 0){ }
   uint8_t len = Serial.read();
@@ -70,10 +71,28 @@ void loop() {
       buf[read_byte_cnt++] = Serial.read();
     }    
   }
+
+  // read command
+  while(Serial.available() <= 0){ }
+  char command = Serial.read();
+
+  // if send with ack
+  if (command == 'a'){
+    
+    // read retransmission
+    while(Serial.available() <= 0){ }
+    uint8_t re_tx = Serial.read();
+    
+    // read command
+    while(Serial.available() <= 0){ }
+    uint8_t wait = Serial.read();
+    
+    result = send_with_ack(buf, len, re_tx, wait*100);
+  }
+  else{
+    result = send_without_ack(buf, len);
+  }
+
+  Serial.println(int(result));
   
-  // send out packet through lora
-  if(send_with_ack(buf, len)) 
-    Serial.println(int(len));
-  else
-    Serial.println(0);
 }
