@@ -8,36 +8,72 @@
 </head>
 <body>
 <header>
-    <h1><img src="/images/atoi_logo.png"></h1>
+    <h1><img class="logo" src="/images/atoi_logo.png"></h1>
 </header>
-<div>
-    <table align="center">
-        <% for(var i = 0; i < num_row; i++) { %>
-        <tr>
-            <% for (var j = 0; j < num_col; j++) { %>
-            <% var number = i * num_col + j; %>
+<div class="wrapper">
+    <div class="image">
+        <table align="center">
+            <% for(var i = 0; i < num_row; i++) { %>
+            <tr>
+                <% for (var j = 0; j < num_col; j++) { %>
+                <% var number = i * num_col + j; %>
 
-            <td id="cell-<%= number %>"
-                    <% if (imageCells[number]) { %>
-                style="background-image: url(<%= imageCells[number] %>)">
+                <td id="cell-<%= number %>"
+                        <% if (imageCells[number]) { %>
+                    style="background-image: url(<%= imageCells[number] %>)">
+                    <% } %>
+                </td>
+
                 <% } %>
-            </td>
-
+            </tr>
             <% } %>
-        </tr>
-        <% } %>
-    </table>
+        </table>
+    </div>
+    <div class="description">
+        <ul>
+            <li>
+                Changed cell number: <span id="changed_cell_number">-</span>
+            </li>
+            <li>
+                Update count: <span id="update_count">0</span>
+            </li>
+            <li>
+                Update period: <span id="update_period">-</span>
+            </li>
+            <li>
+                Average update period: <span id="average_update_period">-</span>
+            </li>
+        </ul>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
+    const date = new Date();
 
-    socket.on('updateCell', function(cell) {
+    let updateCount = 0;
+    let timestamp = date.getTime();
+    let sumUpdatePeriod = 0;
+
+    socket.on('updateCell', function (cell) {
         const $cell = $("#cell-" + cell.number);
 
         $cell.css("background-image",
-                    `url("${cell.image}")`)
+            `url("${cell.image}")`)
+
+        $("#changed_cell_number").text(cell.number);
+        $("#update_count").text(++updateCount);
+
+        let currentTime = date.getTime();
+        let period = currentTime - timestamp;
+
+        sumUpdatePeriod += period
+
+        timestamp = currentTime;
+
+        $("#update_period").text(period);
+        $("#average_update_period").text(sumUpdatePeriod / updateCount);
     })
 </script>
 
