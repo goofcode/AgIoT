@@ -66,8 +66,7 @@ class AtoI:
     def capture_gray_2d(self):
 
         self._camera.capture(self._capture, 'rgb')
-        self.now = np.dot(np.reshape(self._capture, (self.height, self.width, 3)), [0.299, 0.587, 0.114]).astype(
-            np.uint8)
+        self.now = np.array([self._capture[i*3] for i in range(160*160)]).reshape(160, 160)
 
         if self.prev is None:
             self.prev = np.copy(self.now)
