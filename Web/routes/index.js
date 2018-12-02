@@ -3,9 +3,6 @@ const cache = require('memory-cache');
 
 const PNGlib = require('node-pnglib');
 
-const multer  = require('multer');
-const upload  = multer({ storage: multer.memoryStorage() });
-
 const router = express.Router();
 
 const n = 16;
@@ -18,14 +15,33 @@ const cellSize = imageSize / n;
 
 // TODO: initialize all cells
 
+const parseHexString = (str) => {
+    let result = [];
+
+    for (let i = 0; i < 100; i++) {
+        result.push(0)
+    }
+
+    let i = 0;
+    while (str.length >= 2) {
+        result[i] = parseInt(str.substring(0, 2), 16);
+
+        str = str.substring(2, str.length);
+        i++;
+    }
+
+    return result;
+};
+
 const parseImage = (data) => {
-    // TODO: properly parse image data
+    const bytes = parseHexString(data);
+
     let png = new PNGlib(cellSize, cellSize, cellSize * cellSize);
     for (let i = 0; i < cellSize; i++) {
         for (let j = 0; j < cellSize; j++) {
-            const g = data[i * cellSize + j];
+            const g = bytes[i * cellSize + j];
 
-            png.setPixel(i, j, [g, g, g]);
+            png.setPixel(j, i, [g, g, g]);
         }
     }
 
@@ -39,9 +55,8 @@ const getImageCell = (data) => {
     }
 };
 
-const updateCell = (res, changedCell) => {
+const updateCell = async (changedCell) => {
     let cells = cache.get('cells');
-    let updateQueue = cache.get('updateQueue');
 
     if (!cells) {
         cells = [];
@@ -50,74 +65,48 @@ const updateCell = (res, changedCell) => {
     cells[changedCell.number] = changedCell.image;
 
     cache.put('cells', cells);
-
-    if (!updateQueue) {
-        updateQueue = [];
-    }
-
-    updateQueue.push(changedCell);
-
-    cache.put('updateQueue', updateQueue);
 };
 
-router.get('/', function (req, res) {
-    const cells = cache.get('cells');
 
-    // Draw initial image with whole cells saved in server
-    res.render('index', {
-        imageCells: cells ? cells : [],
-        num_row: n,
-        num_col: n
-    });
-});
-
-router.get('/api/cells', function (req, res) {
-    const cells = cache.get('cells');
-
-    if (!cells) {
-        res.send([]);
-    } else {
-        res.send(cells);
-    }
-});
-
-router.get('/api/updatedCells', function (req, res) {
-    const updateQueue = cache.get('updateQueue');
-
-    if (!updateQueue) {
-        res.send([]);
-    } else {
-        res.send(updateQueue);
-    }
-});
-
-router.post('/api/updatedCells/pop', function (req, res) {
-    const updateQueue = cache.get('updateQueue');
-
-    updateQueue.shift();
-    cache.put('updateQueue', updateQueue);
-
-    res.send(cache.get('updateQueue'));
-});
-
-router.post('/api/image', upload.single('cell'), async function (req, res) {
-    let changedCell = await getImageCell({
-        number: req.body['number'],
-        image: req.file.buffer
+module.exports = (sessionStore, io) => {
+    io.on('connection', function (socket) {
+        console.log('new client connected');
     });
 
-    console.log(req.body);
-    console.log(req.file);
+    router.get('/', function (req, res) {
+        const cells = cache.get('cells');
 
-    await updateCell(res, changedCell);
+        io.emit('broadcast', { for: 'everyone' });
 
-    res.send({
-        changedCellNumber: changedCell.number,
-        imageData: changedCell.image,
-        cells: cache.get('cells'),
-        updateQueue: cache.get('updateQueue')
+        res.render('index', {
+            imageCells: cells ? cells : [],
+            num_row: n,
+            num_col: n
+        });
     });
-});
 
+    router.get('/api/cells', function (req, res) {
+        const cells = cache.get('cells');
 
-module.exports = router;
+        if (!cells) {
+            res.send([]);
+        } else {
+            res.send(cells);
+        }
+    });
+
+    router.post('/api/image', async function (req, res) {
+        let changedCell = await getImageCell({
+            number: req.body['number'],
+            image: req.body['cell']
+        });
+
+        await updateCell(changedCell);
+
+        io.emit('updateCell', changedCell);
+
+        res.send("updated cell " + changedCell.number);
+    });
+
+    return router;
+};
