@@ -1,32 +1,51 @@
+import logging
+import time
+
 import numpy as np
 import picamera
-import time
 import serial
-import sys
 
 camera_ready_sleep = 4
 
 sleep_period = 0.5
 intercell_sleep = 0.1
 
-thresholds = [100, 100, 0.5]    # manhattan, euclidean, cosine
+thresholds = [100, 100, 0.5]  # manhattan, euclidean, cosine
 
 
 class AtoI:
 
-    def __init__(self, width, height, n, diff_alg):
+    def __init__(self, width, height, n, diff_alg, re_tx, wait):
+
+        # ready logging
+        self.logger = logging.getLogger('atoi')
+        self.logger.setLevel(logging.DEBUG)
+        log_format = logging.Formatter("[%(asctime)s] %(message)s")
+
+        file_handler = logging.FileHandler('lora.log')
+        file_handler.setFormatter(log_format)
+        self.logger.addHandler(file_handler)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_format)
+        self.logger.addHandler(console_handler)
+
+        self.logger.debug('=' * 50)
+        self.logger.debug('{}*{}, n:{}, diff:{}, re_tx:{}, ack_wait:{}'
+                          .format(width, height, n, diff_alg, re_tx, wait*100))
+
+        # ready camera
         self._camera = picamera.PiCamera(resolution=(width, height))
         time.sleep(camera_ready_sleep)
-        print("pi camera setup finished")
-        sys.stdout.flush()
+        self._camera.color_effects = (128, 128)
+        self.logger.debug("pi camera setup finished")
 
+        # ready lora
         self._lora_serial = serial.Serial('/dev/ttyUSB0', baudrate=115200)
-        print(self._lora_serial.read_until()[:-1])
-        sys.stdout.flush()
+        self.logger.debug(self._lora_serial.read_until()[:-1])
 
         self.n = n
         self.total_cell = n * n
-
         self.width = width
         self.height = height
         self.cell_width = int(width / self.n)
@@ -36,18 +55,24 @@ class AtoI:
         self.now = None
         self.prev = None
 
-        self.re_tx = 2
-        self.ack_wait = 30
+        self.re_tx = re_tx
+        self.ack_wait = wait
 
         self.diff_alg = diff_alg
         self.threshold = thresholds[diff_alg]
 
+        self.logger.debug("initialization finished")
+
     def capture_gray_2d(self):
+
         self._camera.capture(self._capture, 'rgb')
-        self.now = np.dot(np.reshape(self._capture, (self.height, self.width, 3)), [0.299, 0.587, 0.114]).astype(np.uint8)
+        self.now = np.dot(np.reshape(self._capture, (self.height, self.width, 3)), [0.299, 0.587, 0.114]).astype(
+            np.uint8)
 
         if self.prev is None:
             self.prev = np.copy(self.now)
+
+        self.logger.debug('capture')
 
         self._save()
 
@@ -91,19 +116,19 @@ class AtoI:
         # type: (int, np.ndarray) -> int
         payload = [idx]
         payload.extend(cell.astype(np.uint8).reshape(self.cell_width * self.cell_height).tolist())
-        return self._send(bytearray(payload))
+
+        start_time = time.time()
+        sent = self._send(bytearray(payload))
+        self.logger.debug('cell\t{}\t{}\t{},'.format(idx, sent, time.time() - start_time))
+        return sent
 
     def send_all_cells(self):
-        for (idx, cell) in self.get_all_now_cells():
-            print(self.send_cell(idx, cell))
-            sys.stdout.flush()
 
+        for (idx, cell) in self.get_all_now_cells():
+            self.send_cell(idx, cell)
             time.sleep(intercell_sleep)
 
     def _save(self):
-        print('saving picture')
-        sys.stdout.flush()
-
         with open('output', 'wb') as f:
             f.write(self.now)
 
@@ -137,20 +162,22 @@ class AtoI:
             pcell = self.get_prev_cell(idx)
             ncell = self.get_now_cell(idx)
 
-            if self._get_diff(pcell, ncell) > self.threshold:
+            diff = self._get_diff(pcell, ncell)
+            self.logger.debug('diff\t{}\t{}\t{}'.format(idx, diff, self.threshold))
+
+            if diff > self.threshold:
                 self.send_cell(idx, ncell)
                 self._update_prev(idx, ncell)
 
 
 if __name__ == "__main__":
 
-    atoi = AtoI(160, 160, 16, 0)
+    atoi = AtoI(160, 160, 16, 0, 2, 30)
 
     atoi.capture_gray_2d()
     atoi.send_all_cells()
 
     while True:
-
         atoi.capture_gray_2d()
         atoi.send_diff_and_update()
         time.sleep(sleep_period)
