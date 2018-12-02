@@ -38,14 +38,14 @@ void api_send_cell(int number, uint8_t* cell)
 void setup() 
 {
   Bridge.begin(BAUDRATE);
-  Console.begin();
-  while (!Console);                // Wait for serial port to be available
+//  Console.begin();
+//  while (!Console);                // Wait for serial port to be available
   
   if (!rf95.init()){
-    Console.println("init failed");
+//    Console.println("init failed");
     exit(0);
   }
-  Console.println("Start LoRa Client");
+//  Console.println("Start LoRa Client");
 
   rf95.setFrequency(FREQUENCY);     // Setup ISM frequency
   rf95.setTxPower(13);              // Setup Power,dBm
@@ -54,8 +54,8 @@ void setup()
                                     // Lower BandWidth for longer distance.
   rf95.setCodingRate4(5);           // Setup Coding Rate:5(4/5),6(4/6),7(4/7),8(4/8) 
   
-  Console.print(F("Listening on frequency: "));
-  Console.println(FREQUENCY);
+//  Console.print(F("Listening on frequency: "));
+//  Console.println(FREQUENCY);
 }
 
 void loop()
@@ -64,14 +64,14 @@ void loop()
   {    
     if (rf95.recv(buf, &len))
     {            
-      Console.print(F("packet received "));
-      Console.println((int)len);
+//      Console.print(F("packet received "));
+//      Console.println((int)len);
 
-      for(int i=0 ;i<len; i++){
-        Console.print((int)buf[i]);
-        Console.print(F(" "));
-      }
-      Console.println();
+//      for(int i=0 ;i<len; i++){
+//        Console.print((int)buf[i]);
+//        Console.print(F(" "));
+//      }
+//      Console.println();
 
       ack_buf[0] = buf[0];
     
@@ -81,7 +81,7 @@ void loop()
       // rest call
       api_send_cell(buf[0], &buf[1]);
       
-      Console.println();
+//      Console.println();
     }
   }
   
