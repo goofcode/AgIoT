@@ -38,6 +38,7 @@ class AtoI:
         self._camera = picamera.PiCamera(resolution=(width, height))
         time.sleep(camera_ready_sleep)
         self._camera.color_effects = (128, 128)
+        self._camera.rotation = 180
         self.logger.debug("pi camera setup finished")
 
         # ready lora
