@@ -44,6 +44,8 @@ int send_with_ack(uint8_t *buf, uint8_t len, int re_tx, int wait) {
   int idx = buf[0];
   uint8_t recv_len;
 
+  unsigned long start_time;
+
   buf[len] = get_crc8(buf, len);
   len++;
 
@@ -51,13 +53,16 @@ int send_with_ack(uint8_t *buf, uint8_t len, int re_tx, int wait) {
     
     rf95.send(buf, len);
     rf95.waitPacketSent();
-  
-    if (rf95.waitAvailableTimeout(wait))
-    {
-      // Should be a reply message for us now
-      if (rf95.recv(buf, &recv_len))
-        if (buf[0] == idx && strncmp(&buf[1], "ACK", 3) == 0)
-          return len;
+
+    start_time = millis();
+
+    while(millis() - start_time < wait){
+      if(rf95.available()){
+        // Should be a reply message for us now
+        if (rf95.recv(buf, &recv_len))
+          if (buf[0] == idx && strncmp(&buf[1], "ACK", 3) == 0)
+            return len;
+      }
     }
   }
 
